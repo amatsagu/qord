@@ -114,6 +114,10 @@ func NewClient(opt ClientOptions) *Client {
 }
 
 func (client *Client) SendMessage(channelID tempest.Snowflake, message tempest.Message, files []tempest.File) (tempest.Message, error) {
+	if client.respectRateLimits {
+		client.RateLimiter.WaitOrSet(channelID, message_rate, message_regen_time)
+	}
+
 	raw, err := client.Rest.RequestWithFiles(http.MethodPost, "/channels/"+channelID.String()+"/messages", message, files)
 	if err != nil {
 		return tempest.Message{}, err
@@ -135,6 +139,10 @@ func (client *Client) SendLinearMessage(channelID tempest.Snowflake, content str
 // Creates (or fetches if already exists) user's private text channel (DM) and tries to send message into it.
 // Warning! Discord's user channels endpoint has huge rate limits so please reuse tempest.Message#ChannelID whenever possible.
 func (client *Client) SendPrivateMessage(userID tempest.Snowflake, content tempest.Message, files []tempest.File) (tempest.Message, error) {
+	if client.respectRateLimits {
+		client.RateLimiter.WaitOrSet(userID, message_rate, message_regen_time)
+	}
+
 	res := make(map[string]any, 0)
 	res["recipient_id"] = userID
 
@@ -160,21 +168,37 @@ func (client *Client) SendPrivateMessage(userID tempest.Snowflake, content tempe
 }
 
 func (client *Client) EditMessage(channelID tempest.Snowflake, messageID tempest.Snowflake, content tempest.Message) error {
+	if client.respectRateLimits {
+		client.RateLimiter.WaitOrSet(channelID, message_rate, message_regen_time)
+	}
+
 	_, err := client.Rest.Request(http.MethodPatch, "/channels/"+channelID.String()+"/messages/"+messageID.String(), content)
 	return err
 }
 
 func (client *Client) DeleteMessage(channelID tempest.Snowflake, messageID tempest.Snowflake) error {
+	if client.respectRateLimits {
+		client.RateLimiter.WaitOrSet(channelID, message_rate, message_regen_time)
+	}
+
 	_, err := client.Rest.Request(http.MethodDelete, "/channels/"+channelID.String()+"/messages/"+messageID.String(), nil)
 	return err
 }
 
 func (client *Client) CrosspostMessage(channelID tempest.Snowflake, messageID tempest.Snowflake) error {
+	if client.respectRateLimits {
+		client.RateLimiter.WaitOrSet(channelID, message_rate, message_regen_time)
+	}
+
 	_, err := client.Rest.Request(http.MethodPost, "/channels/"+channelID.String()+"/messages/"+messageID.String()+"/crosspost", nil)
 	return err
 }
 
 func (client *Client) FetchUser(id tempest.Snowflake) (tempest.User, error) {
+	if client.respectRateLimits { // Put cooldown on self
+		client.RateLimiter.WaitOrSet(client.ApplicationID, target_rate, target_regen_time)
+	}
+
 	raw, err := client.Rest.Request(http.MethodGet, "/users/"+id.String(), nil)
 	if err != nil {
 		return tempest.User{}, err
@@ -190,6 +214,10 @@ func (client *Client) FetchUser(id tempest.Snowflake) (tempest.User, error) {
 }
 
 func (client *Client) FetchMember(guildID tempest.Snowflake, memberID tempest.Snowflake) (tempest.Member, error) {
+	if client.respectRateLimits {
+		client.RateLimiter.WaitOrSet(guildID, target_rate, target_regen_time)
+	}
+
 	raw, err := client.Rest.Request(http.MethodGet, "/guilds/"+guildID.String()+"/members/"+memberID.String(), nil)
 	if err != nil {
 		return tempest.Member{}, err
