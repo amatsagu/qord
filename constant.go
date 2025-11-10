@@ -3,7 +3,7 @@ package qord
 import "time"
 
 const (
-	ADDON_VERSION = "v0.1"
+	ADDON_VERSION = "v0.3"
 	USER_AGENT    = "DiscordBot (https://github.com/amatsagu/qord, " + ADDON_VERSION + ")"
 )
 
